@@ -5,7 +5,6 @@ import UniformTypeIdentifiers
 enum ExportError: LocalizedError {
     case pngEncodingFailed
     case writeFailed
-    case sourceOverwriteNotAllowed
     case pasteboardWriteFailed
     case cancelled
 
@@ -15,8 +14,6 @@ enum ExportError: LocalizedError {
             "The edited image could not be encoded as PNG."
         case .writeFailed:
             "The PNG could not be written to the selected location."
-        case .sourceOverwriteNotAllowed:
-            "Choose a new filename so the original image remains untouched."
         case .pasteboardWriteFailed:
             "The edited image could not be copied to the clipboard."
         case .cancelled:
@@ -48,8 +45,7 @@ enum ExportService {
     @MainActor
     static func exportPNG(
         image: CGImage,
-        suggestedName: String,
-        sourceURL: URL?
+        suggestedName: String
     ) throws -> URL {
         let panel = NSSavePanel()
         panel.title = "Export Edited PNG"
@@ -60,11 +56,6 @@ enum ExportService {
 
         guard panel.runModal() == .OK, let destinationURL = panel.url else {
             throw ExportError.cancelled
-        }
-
-        if let sourceURL,
-           destinationURL.standardizedFileURL == sourceURL.standardizedFileURL {
-            throw ExportError.sourceOverwriteNotAllowed
         }
 
         let data = try pngData(for: image)

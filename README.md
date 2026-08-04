@@ -51,7 +51,7 @@ The suite covers Vision/image/canvas coordinate conversions, letterboxing, backg
 7. For photographed paper, gradients, or light textures, choose **Photo-aware** cleanup. For a known solid color, choose **Solid** and optionally enable **Use custom background**.
 8. Switch between **Before** and **After**, undo or redo edits, then copy the result or export a PNG.
 
-The imported image is never overwritten. Previews and exports are regenerated from an immutable canonical source buffer and the current edit state.
+Previews and exports are regenerated from an immutable in-memory source buffer and the current edit state. The macOS save panel handles existing-file replacement, including confirmation when you choose the original file as the export destination.
 
 ## Privacy
 

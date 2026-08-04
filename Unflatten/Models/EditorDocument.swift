@@ -25,7 +25,6 @@ final class EditorDocument: ObservableObject {
         category: "EditorDocument"
     )
     private var originalPixelBuffer: ImagePixelBuffer?
-    private var sourceURL: URL?
     private(set) var sourceName = "image"
     private var undoStack: [[TextRegion]] = []
     private var redoStack: [[TextRegion]] = []
@@ -493,8 +492,7 @@ final class EditorDocument: ObservableObject {
                 let rendered = try await renderCurrentState()
                 let destination = try ExportService.exportPNG(
                     image: rendered.image,
-                    suggestedName: sourceName,
-                    sourceURL: sourceURL
+                    suggestedName: sourceName
                 )
                 renderWarnings = rendered.warnings
                 statusMessage = "Exported \(destination.lastPathComponent)."
@@ -524,7 +522,6 @@ final class EditorDocument: ObservableObject {
         originalPixelBuffer = buffer
         originalImage = canonicalImage
         previewImage = canonicalImage
-        sourceURL = imported.sourceURL
         sourceName = imported.displayName.isEmpty ? "image" : imported.displayName
         regions = []
         selectedRegionID = nil
