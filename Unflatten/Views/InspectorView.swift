@@ -92,6 +92,62 @@ struct InspectorView: View {
                     )
                     .lineLimit(1...4)
                     .focused($replacementIsFocused)
+
+                    Toggle(
+                        "Math formatting",
+                        isOn: Binding(
+                            get: {
+                                document.region(id: region.id)?
+                                    .style.mathFormattingEnabled
+                                    ?? region.style.mathFormattingEnabled
+                            },
+                            set: {
+                                document.setMathFormattingEnabled(
+                                    $0,
+                                    for: region.id
+                                )
+                            }
+                        )
+                    )
+
+                    if (document.region(id: region.id)?
+                        .style.mathFormattingEnabled
+                        ?? region.style.mathFormattingEnabled) {
+                        HStack(spacing: 7) {
+                            Button("x₂") {
+                                document.insertMathMarkup(
+                                    "_{2}",
+                                    for: region.id
+                                )
+                            }
+                            .help("Append a subscript template")
+
+                            Button("x²") {
+                                document.insertMathMarkup(
+                                    "^{2}",
+                                    for: region.id
+                                )
+                            }
+                            .help("Append a superscript template")
+
+                            Button("a⁄b") {
+                                document.insertMathMarkup(
+                                    "\\frac{a}{b}",
+                                    for: region.id
+                                )
+                            }
+                            .help("Append a fraction template")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+
+                        Text(
+                            "Use H_{2}O, x^{2}, \\frac{a}{b}, \\sqrt{x}, or symbols such as \\alpha and \\pi."
+                        )
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 9) {

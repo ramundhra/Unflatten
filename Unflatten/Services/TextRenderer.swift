@@ -239,7 +239,8 @@ enum TextRenderer {
             text: text,
             family: style.fontFamily,
             weight: style.weight,
-            fontSize: requestedSize
+            fontSize: requestedSize,
+            mathFormattingEnabled: style.mathFormattingEnabled
         )
 
         if measurement(requestedMeasurement, fitsIn: size) {
@@ -254,7 +255,8 @@ enum TextRenderer {
             text: text,
             family: style.fontFamily,
             weight: style.weight,
-            fontSize: minimumFontSize
+            fontSize: minimumFontSize,
+            mathFormattingEnabled: style.mathFormattingEnabled
         )
         guard measurement(minimumMeasurement, fitsIn: size) else {
             return TextFitResult(fontSize: minimumFontSize, fits: false)
@@ -269,7 +271,8 @@ enum TextRenderer {
                 text: text,
                 family: style.fontFamily,
                 weight: style.weight,
-                fontSize: candidate
+                fontSize: candidate,
+                mathFormattingEnabled: style.mathFormattingEnabled
             )
             if measurement(candidateMeasurement, fitsIn: size) {
                 lower = candidate
@@ -317,7 +320,8 @@ enum TextRenderer {
             text: text,
             family: style.fontFamily,
             weight: style.weight,
-            fontSize: max(minimumFontSize, style.fontSize)
+            fontSize: max(minimumFontSize, style.fontSize),
+            mathFormattingEnabled: style.mathFormattingEnabled
         )
         return CGSize(
             width: measurement.widths.max() ?? 0,
@@ -336,6 +340,12 @@ enum TextRenderer {
         let totalHeight: CGFloat
     }
 
+    private struct AttributedLine {
+        let string: NSAttributedString
+        let baseFont: CTFont
+        let usedFallbackFont: Bool
+    }
+
     private static func draw(
         _ text: String,
         style: TextStyle,
@@ -348,23 +358,32 @@ enum TextRenderer {
             return DrawResult(fit: fit, usedFallbackFont: false)
         }
 
-        let fontResult = makeFont(
-            family: style.fontFamily,
-            weight: style.weight,
-            size: fit.fontSize
-        )
-        let font = fontResult.font
         let lines = text.components(separatedBy: .newlines)
-        let attributes: [NSAttributedString.Key: Any] = [
-            NSAttributedString.Key(kCTFontAttributeName as String): font,
-            NSAttributedString.Key(kCTForegroundColorAttributeName as String): style.textColor.nsColor.cgColor
-        ]
-        let coreTextLines = lines.map {
-            CTLineCreateWithAttributedString(NSAttributedString(string: $0, attributes: attributes))
+        let attributedLines = lines.map {
+            makeAttributedLine(
+                text: $0,
+                family: style.fontFamily,
+                weight: style.weight,
+                fontSize: fit.fontSize,
+                textColor: style.textColor,
+                mathFormattingEnabled: style.mathFormattingEnabled
+            )
         }
+        let coreTextLines = attributedLines.map {
+            CTLineCreateWithAttributedString($0.string)
+        }
+        let font = attributedLines.first?.baseFont
+            ?? makeFont(
+                family: style.fontFamily,
+                weight: style.weight,
+                size: fit.fontSize
+            ).font
 
-        let lineHeight = typographicLineHeight(font: font, fontSize: fit.fontSize)
         let glyphBounds = coreTextLines.map { visibleBounds(for: $0, font: font) }
+        let lineHeight = max(
+            typographicLineHeight(font: font, fontSize: fit.fontSize),
+            (glyphBounds.map(\.height).max() ?? 0) + fit.fontSize * 0.08
+        )
         let layoutBounds = unionBounds(
             glyphBounds,
             baselineStep: -lineHeight
@@ -394,32 +413,124 @@ enum TextRenderer {
         }
 
         context.restoreGState()
-        return DrawResult(fit: fit, usedFallbackFont: fontResult.usedFallback)
+        return DrawResult(
+            fit: fit,
+            usedFallbackFont: attributedLines.contains(where: \.usedFallbackFont)
+        )
     }
 
     private static func measure(
         text: String,
         family: String,
         weight: TextWeight,
-        fontSize: CGFloat
+        fontSize: CGFloat,
+        mathFormattingEnabled: Bool = false
     ) -> TextMeasurement {
-        let font = makeFont(family: family, weight: weight, size: fontSize).font
         let lines = text.components(separatedBy: .newlines)
-        let attributes: [NSAttributedString.Key: Any] = [
-            NSAttributedString.Key(kCTFontAttributeName as String): font
-        ]
-        let coreTextLines = lines.map {
-            let line = CTLineCreateWithAttributedString(NSAttributedString(string: $0, attributes: attributes))
-            return line
+        let attributedLines = lines.map {
+            makeAttributedLine(
+                text: $0,
+                family: family,
+                weight: weight,
+                fontSize: fontSize,
+                textColor: nil,
+                mathFormattingEnabled: mathFormattingEnabled
+            )
         }
+        let coreTextLines = attributedLines.map {
+            CTLineCreateWithAttributedString($0.string)
+        }
+        let font = attributedLines.first?.baseFont
+            ?? makeFont(family: family, weight: weight, size: fontSize).font
         let glyphBounds = coreTextLines.map { visibleBounds(for: $0, font: font) }
-        let lineHeight = typographicLineHeight(font: font, fontSize: fontSize)
+        let lineHeight = max(
+            typographicLineHeight(font: font, fontSize: fontSize),
+            (glyphBounds.map(\.height).max() ?? 0) + fontSize * 0.08
+        )
         let layoutBounds = unionBounds(glyphBounds, baselineStep: -lineHeight)
 
         return TextMeasurement(
             widths: glyphBounds.map(\.width),
             lineHeight: lineHeight,
             totalHeight: layoutBounds.height
+        )
+    }
+
+    private static func makeAttributedLine(
+        text: String,
+        family: String,
+        weight: TextWeight,
+        fontSize: CGFloat,
+        textColor: RGBAColor?,
+        mathFormattingEnabled: Bool
+    ) -> AttributedLine {
+        let baseFontResult = makeFont(
+            family: family,
+            weight: weight,
+            size: fontSize
+        )
+        let segments = mathFormattingEnabled
+            ? MathTextParser.parse(text)
+            : [MathTextSegment(text: text, role: .normal)]
+        let attributedString = NSMutableAttributedString()
+        var usedFallbackFont = baseFontResult.usedFallback
+
+        for segment in segments {
+            let scale: CGFloat
+            let baselineOffset: CGFloat
+            switch segment.role {
+            case .normal:
+                scale = 1
+                baselineOffset = 0
+            case .subscriptText:
+                scale = 0.68
+                baselineOffset = -fontSize * 0.22
+            case .superscriptText:
+                scale = 0.68
+                baselineOffset = fontSize * 0.38
+            case .fractionNumerator:
+                scale = 0.68
+                baselineOffset = fontSize * 0.30
+            case .fractionDenominator:
+                scale = 0.68
+                baselineOffset = -fontSize * 0.22
+            }
+
+            let segmentFontResult: (font: CTFont, usedFallback: Bool)
+            if scale == 1 {
+                segmentFontResult = baseFontResult
+            } else {
+                segmentFontResult = makeFont(
+                    family: family,
+                    weight: weight,
+                    size: max(1, fontSize * scale)
+                )
+            }
+            usedFallbackFont = usedFallbackFont || segmentFontResult.usedFallback
+
+            var attributes: [NSAttributedString.Key: Any] = [
+                NSAttributedString.Key(kCTFontAttributeName as String): segmentFontResult.font
+            ]
+            if baselineOffset != 0 {
+                attributes[
+                    NSAttributedString.Key(kCTBaselineOffsetAttributeName as String)
+                ] = baselineOffset
+            }
+            if let textColor {
+                attributes[
+                    NSAttributedString.Key(kCTForegroundColorAttributeName as String)
+                ] = textColor.nsColor.cgColor
+            }
+
+            attributedString.append(
+                NSAttributedString(string: segment.text, attributes: attributes)
+            )
+        }
+
+        return AttributedLine(
+            string: attributedString,
+            baseFont: baseFontResult.font,
+            usedFallbackFont: usedFallbackFont
         )
     }
 

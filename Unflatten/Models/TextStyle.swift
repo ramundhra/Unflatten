@@ -115,6 +115,7 @@ struct TextStyle: Codable, Equatable, Sendable {
     var customAreaWidthScale: CGFloat
     var customAreaHeightScale: CGFloat
     var shrinkToFit: Bool
+    var mathFormattingEnabled: Bool
 
     static func estimated(
         fontSize: CGFloat,
@@ -134,7 +135,8 @@ struct TextStyle: Codable, Equatable, Sendable {
             textAreaSizingMode: .automatic,
             customAreaWidthScale: 1,
             customAreaHeightScale: 1,
-            shrinkToFit: true
+            shrinkToFit: true,
+            mathFormattingEnabled: false
         )
     }
 }

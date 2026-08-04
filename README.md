@@ -47,8 +47,9 @@ The suite covers Vision/image/canvas coordinate conversions, letterboxing, backg
 3. To edit existing text, click an outlined line or double-click it to focus the replacement field.
 4. To create new text, click **Add Text** in the toolbar, then click where it should appear in the image. The new text is immediately selected for editing and is composited without erasing the background beneath it. Drag its outline to reposition it.
 5. Type replacement text and adjust font, size, weight, color, and alignment. Choose a **Text area** mode: **Fixed** shrinks into the original area, **Auto** expands enough to preserve the requested size, and **Custom** lets you choose an intermediate width and height.
-6. For photographed paper, gradients, or light textures, choose **Photo-aware** cleanup. For a known solid color, choose **Solid** and optionally enable **Use custom background**.
-7. Switch between **Before** and **After**, undo or redo edits, then copy the result or export a PNG.
+6. Enable **Math formatting** to use local LaTeX-style inline math. Examples include `H_{2}O` for subscript, `x^{2}` for superscript, `\frac{a}{b}` for a fraction, `\sqrt{x}` for a square root, and commands such as `\alpha`, `\pi`, `\times`, or `\infty` for symbols. The inspector also includes quick-insert buttons for subscripts, superscripts, and fractions.
+7. For photographed paper, gradients, or light textures, choose **Photo-aware** cleanup. For a known solid color, choose **Solid** and optionally enable **Use custom background**.
+8. Switch between **Before** and **After**, undo or redo edits, then copy the result or export a PNG.
 
 The imported image is never overwritten. Previews and exports are regenerated from an immutable canonical source buffer and the current edit state.
 
@@ -65,6 +66,7 @@ The imported image is never overwritten. Previews and exports are regenerated fr
 - Photo-aware cleanup reconstructs a text area from nearby pixels and is best suited to paper, gradients, and light textures. Detailed objects, strong edges, and complex scenes can still look imperfect.
 - OCR is English-first and exposes one editable textbox for each line recognized by Vision.
 - Replacement text is horizontal. Curved, rotated, perspective-distorted, and handwritten text is unsupported.
+- Math formatting implements a focused inline LaTeX-style subset rather than a complete TeX layout engine. Fractions use a compact numerator/fraction-slash/denominator layout suitable for image labels.
 - Font family, weight, color, alignment, and size are estimates; exact source fonts are not recovered.
 - Photo-aware cleanup is deterministic surrounding-pixel reconstruction, not generative inpainting. A true generative model would need to be separately bundled or explicitly connected.
 - Imported pixels are normalized once to an 8-bit sRGB premultiplied-RGBA buffer so edits are deterministic and untouched canonical pixels remain exact.

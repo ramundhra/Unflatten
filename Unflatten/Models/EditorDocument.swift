@@ -382,6 +382,20 @@ final class EditorDocument: ObservableObject {
         }
     }
 
+    func setMathFormattingEnabled(_ isEnabled: Bool, for id: UUID) {
+        updateRegion(id: id) {
+            $0.style.mathFormattingEnabled = isEnabled
+        }
+    }
+
+    func insertMathMarkup(_ markup: String, for id: UUID) {
+        updateRegion(id: id) {
+            $0.style.mathFormattingEnabled = true
+            $0.replacementText += markup
+        }
+        beginEditing(id)
+    }
+
     func resetSelectedRegion() {
         guard let selectedRegionID else { return }
         resetRegion(selectedRegionID)

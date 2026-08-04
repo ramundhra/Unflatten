@@ -22,7 +22,8 @@ enum TestSupport {
             textAreaSizingMode: textAreaSizingMode,
             customAreaWidthScale: 1,
             customAreaHeightScale: 1,
-            shrinkToFit: shrinkToFit
+            shrinkToFit: shrinkToFit,
+            mathFormattingEnabled: false
         )
     }
 
