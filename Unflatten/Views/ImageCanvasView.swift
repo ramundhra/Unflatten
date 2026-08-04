@@ -159,7 +159,7 @@ struct ImageCanvasView: View {
 
     private func interactiveRect(for region: TextRegion) -> CGRect {
         guard region.isEdited else { return region.imageBoundingBox }
-        return TextRenderer.affectedRect(
+        return TextRenderer.drawingRect(
             for: region,
             imageSize: document.pixelSize
         )

@@ -103,6 +103,10 @@ enum TextAreaSizingMode: String, Codable, CaseIterable, Identifiable, Sendable {
 }
 
 struct TextStyle: Codable, Equatable, Sendable {
+    static let minimumCustomAreaScale: CGFloat = 0.1
+    static let maximumCustomAreaWidthScale: CGFloat = 5
+    static let maximumCustomAreaHeightScale: CGFloat = 3
+
     var fontFamily: String
     var fontSize: CGFloat
     var weight: TextWeight

@@ -148,8 +148,8 @@ enum TextRenderer {
     /// The source-image rectangle used to draw replacement text.
     ///
     /// The original cleanup rectangle remains unchanged. Only the drawing area
-    /// grows, either just enough to preserve the requested font size or by the
-    /// user's custom width and height, without erasing neighboring pixels.
+    /// changes: Auto grows it enough to preserve the requested font size, while
+    /// Custom can shrink or enlarge it without changing the cleanup rectangle.
     static func drawingRect(
         for region: TextRegion,
         imageSize: CGSize
@@ -181,23 +181,30 @@ enum TextRenderer {
             desiredSize = CGSize(
                 width: ceil(
                     originalRect.width
-                        * min(max(region.style.customAreaWidthScale, 1), 5)
+                        * min(
+                            max(
+                                region.style.customAreaWidthScale,
+                                TextStyle.minimumCustomAreaScale
+                            ),
+                            TextStyle.maximumCustomAreaWidthScale
+                        )
                 ),
                 height: ceil(
                     originalRect.height
-                        * min(max(region.style.customAreaHeightScale, 1), 3)
+                        * min(
+                            max(
+                                region.style.customAreaHeightScale,
+                                TextStyle.minimumCustomAreaScale
+                            ),
+                            TextStyle.maximumCustomAreaHeightScale
+                        )
                 )
             )
         }
 
-        guard desiredSize.width > originalRect.width
-                || desiredSize.height > originalRect.height else {
-            return originalRect
-        }
-
         let imageBounds = CGRect(origin: .zero, size: imageSize)
-        let width = min(desiredSize.width, imageBounds.width)
-        let height = min(desiredSize.height, imageBounds.height)
+        let width = min(max(desiredSize.width, 2), imageBounds.width)
+        let height = min(max(desiredSize.height, 2), imageBounds.height)
 
         let proposedX: CGFloat
         switch region.style.alignment {

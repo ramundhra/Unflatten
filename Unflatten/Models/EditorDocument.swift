@@ -365,13 +365,19 @@ final class EditorDocument: ObservableObject {
 
     func setCustomAreaWidthScale(_ scale: CGFloat, for id: UUID) {
         updateRegion(id: id, coalescingKey: "area-width-\(id)") {
-            $0.style.customAreaWidthScale = min(max(scale, 1), 5)
+            $0.style.customAreaWidthScale = min(
+                max(scale, TextStyle.minimumCustomAreaScale),
+                TextStyle.maximumCustomAreaWidthScale
+            )
         }
     }
 
     func setCustomAreaHeightScale(_ scale: CGFloat, for id: UUID) {
         updateRegion(id: id, coalescingKey: "area-height-\(id)") {
-            $0.style.customAreaHeightScale = min(max(scale, 1), 3)
+            $0.style.customAreaHeightScale = min(
+                max(scale, TextStyle.minimumCustomAreaScale),
+                TextStyle.maximumCustomAreaHeightScale
+            )
         }
     }
 

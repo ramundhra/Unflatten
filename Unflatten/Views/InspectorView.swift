@@ -286,7 +286,8 @@ struct InspectorView: View {
                                         )
                                     }
                                 ),
-                                in: 1...5
+                                in: Double(TextStyle.minimumCustomAreaScale)
+                                    ... Double(TextStyle.maximumCustomAreaWidthScale)
                             )
                             Text(
                                 Double(
@@ -318,7 +319,8 @@ struct InspectorView: View {
                                         )
                                     }
                                 ),
-                                in: 1...3
+                                in: Double(TextStyle.minimumCustomAreaScale)
+                                    ... Double(TextStyle.maximumCustomAreaHeightScale)
                             )
                             Text(
                                 Double(
@@ -333,7 +335,7 @@ struct InspectorView: View {
                         }
 
                         Text(
-                            "Partially enlarge the area to choose a rendered size between Fixed and Auto."
+                            "Shrink or enlarge the drawing area. Values below 1.0 make it smaller than the original."
                         )
                         .font(.caption)
                         .foregroundStyle(.secondary)
