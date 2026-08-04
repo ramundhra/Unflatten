@@ -11,6 +11,88 @@ struct BackgroundSample: Equatable, Sendable {
 enum BackgroundSampler {
     static let simpleBackgroundThreshold: CGFloat = 0.68
     private static let dominantInteriorThreshold: CGFloat = 0.56
+    private static let cleanupEdgeMatchThreshold: CGFloat = 0.12
+    private static let cleanupInteriorMatchThreshold: CGFloat = 0.20
+    private static let cleanupColorTolerance: CGFloat = 42
+
+    /// Keeps a solid-color cleanup patch inside the detected background shape.
+    /// Vision boxes can extend a few pixels beyond a cell or label, and filling
+    /// that complete rectangle would paint over the surrounding image.
+    static func constrainedCleanupRect(
+        image: ImagePixelBuffer,
+        proposedRect: CGRect,
+        background: RGBAColor
+    ) -> CGRect {
+        let rect = CoordinateMapper.clampedPixelRect(
+            proposedRect,
+            imageSize: image.size
+        )
+        guard rect.width >= 2, rect.height >= 2 else { return rect }
+
+        var minX = Int(rect.minX)
+        var maxX = Int(rect.maxX)
+        var minY = Int(rect.minY)
+        var maxY = Int(rect.maxY)
+
+        guard backgroundMatchFraction(
+            image: image,
+            inside: rect,
+            background: background
+        ) >= cleanupInteriorMatchThreshold else {
+            return rect
+        }
+
+        while maxX - minX > 2,
+              backgroundMatchFraction(
+                image: image,
+                x: minX,
+                fromY: minY,
+                toY: maxY,
+                background: background
+              ) < cleanupEdgeMatchThreshold {
+            minX += 1
+        }
+
+        while maxX - minX > 2,
+              backgroundMatchFraction(
+                image: image,
+                x: maxX - 1,
+                fromY: minY,
+                toY: maxY,
+                background: background
+              ) < cleanupEdgeMatchThreshold {
+            maxX -= 1
+        }
+
+        while maxY - minY > 2,
+              backgroundMatchFraction(
+                image: image,
+                y: minY,
+                fromX: minX,
+                toX: maxX,
+                background: background
+              ) < cleanupEdgeMatchThreshold {
+            minY += 1
+        }
+
+        while maxY - minY > 2,
+              backgroundMatchFraction(
+                image: image,
+                y: maxY - 1,
+                fromX: minX,
+                toX: maxX,
+                background: background
+              ) < cleanupEdgeMatchThreshold {
+            maxY -= 1
+        }
+
+        return CGRect(
+            x: minX,
+            y: minY,
+            width: maxX - minX,
+            height: maxY - minY
+        )
+    }
 
     /// Samples the area around an OCR line, with a fallback for text that sits
     /// close to the edge of a solid cell or label. In that layout the outer
@@ -168,6 +250,78 @@ enum BackgroundSampler {
         }
 
         return result
+    }
+
+    private static func backgroundMatchFraction(
+        image: ImagePixelBuffer,
+        inside rect: CGRect,
+        background: RGBAColor
+    ) -> CGFloat {
+        var matches = 0
+        var samples = 0
+
+        for y in Int(rect.minY)..<Int(rect.maxY) {
+            for x in Int(rect.minX)..<Int(rect.maxX) {
+                guard let color = image.color(x: x, y: y),
+                      color.alpha > 0.01 else {
+                    continue
+                }
+                samples += 1
+                if colorDistance(color, background) <= cleanupColorTolerance {
+                    matches += 1
+                }
+            }
+        }
+
+        return samples > 0 ? CGFloat(matches) / CGFloat(samples) : 0
+    }
+
+    private static func backgroundMatchFraction(
+        image: ImagePixelBuffer,
+        x: Int,
+        fromY: Int,
+        toY: Int,
+        background: RGBAColor
+    ) -> CGFloat {
+        guard toY > fromY else { return 0 }
+        var matches = 0
+        var samples = 0
+
+        for y in fromY..<toY {
+            guard let color = image.color(x: x, y: y), color.alpha > 0.01 else {
+                continue
+            }
+            samples += 1
+            if colorDistance(color, background) <= cleanupColorTolerance {
+                matches += 1
+            }
+        }
+
+        return samples > 0 ? CGFloat(matches) / CGFloat(samples) : 0
+    }
+
+    private static func backgroundMatchFraction(
+        image: ImagePixelBuffer,
+        y: Int,
+        fromX: Int,
+        toX: Int,
+        background: RGBAColor
+    ) -> CGFloat {
+        guard toX > fromX else { return 0 }
+        var matches = 0
+        var samples = 0
+
+        for x in fromX..<toX {
+            guard let color = image.color(x: x, y: y), color.alpha > 0.01 else {
+                continue
+            }
+            samples += 1
+            if colorDistance(color, background) <= cleanupColorTolerance {
+                matches += 1
+            }
+        }
+
+        return samples > 0 ? CGFloat(matches) / CGFloat(samples) : 0
     }
 
     private static func colorsOnPerimeter(

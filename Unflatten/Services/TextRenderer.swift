@@ -54,7 +54,23 @@ enum TextRenderer {
                 continue
             }
 
-            let cleanupRect = CoordinateMapper.cleanupRect(for: region, imageSize: output.size)
+            let proposedCleanupRect = CoordinateMapper.cleanupRect(
+                for: region,
+                imageSize: output.size
+            )
+            let cleanupRect: CGRect
+            if region.style.backgroundCleanupMode == .solidColor {
+                let sourceBackground = region.style.usesManualBackground
+                    ? region.style.backgroundColor
+                    : region.detectedStyle.backgroundColor
+                cleanupRect = BackgroundSampler.constrainedCleanupRect(
+                    image: source,
+                    proposedRect: proposedCleanupRect,
+                    background: sourceBackground
+                )
+            } else {
+                cleanupRect = proposedCleanupRect
+            }
 
             guard cleanupRect.width >= 2, cleanupRect.height >= 2 else {
                 warnings[region.id] = .regionTooSmall
