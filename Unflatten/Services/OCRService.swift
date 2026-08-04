@@ -52,7 +52,10 @@ enum OCRService {
             let imageRect = CoordinateMapper
                 .visionToImage(line.normalizedBoundingBox, imageSize: pixelBuffer.size)
                 .integral
-            let sample = BackgroundSampler.sample(image: pixelBuffer, around: imageRect)
+            let sample = BackgroundSampler.sampleTextBackground(
+                image: pixelBuffer,
+                around: imageRect
+            )
             let textColor = BackgroundSampler.estimateTextColor(
                 image: pixelBuffer,
                 inside: imageRect,

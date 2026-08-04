@@ -10,6 +10,22 @@ struct BackgroundSample: Equatable, Sendable {
 
 enum BackgroundSampler {
     static let simpleBackgroundThreshold: CGFloat = 0.68
+    private static let dominantInteriorThreshold: CGFloat = 0.56
+
+    /// Samples the area around an OCR line, with a fallback for text that sits
+    /// close to the edge of a solid cell or label. In that layout the outer
+    /// ring can contain the page background even though the pixels beneath the
+    /// text have one clear dominant color.
+    static func sampleTextBackground(
+        image: ImagePixelBuffer,
+        around textRect: CGRect
+    ) -> BackgroundSample {
+        let surrounding = sample(image: image, around: textRect)
+        guard !surrounding.isSimple else { return surrounding }
+
+        let interior = dominantInteriorSample(image: image, inside: textRect)
+        return interior.isSimple ? interior : surrounding
+    }
 
     static func sample(
         image: ImagePixelBuffer,
@@ -178,6 +194,74 @@ enum BackgroundSampler {
         }
 
         return result
+    }
+
+    private static func dominantInteriorSample(
+        image: ImagePixelBuffer,
+        inside textRect: CGRect
+    ) -> BackgroundSample {
+        let rect = CoordinateMapper.clampedPixelRect(
+            textRect,
+            imageSize: image.size
+        )
+        guard rect.width > 0, rect.height > 0 else {
+            return BackgroundSample(
+                color: .white,
+                uniformity: 0,
+                isSimple: false,
+                sampleCount: 0
+            )
+        }
+
+        var colors: [RGBAColor] = []
+        colors.reserveCapacity(Int(rect.width * rect.height))
+        var buckets: [UInt32: [RGBAColor]] = [:]
+
+        for y in Int(rect.minY)..<Int(rect.maxY) {
+            for x in Int(rect.minX)..<Int(rect.maxX) {
+                guard let color = image.color(x: x, y: y),
+                      color.alpha > 0.01 else {
+                    continue
+                }
+                colors.append(color)
+                buckets[quantizedKey(for: color), default: []].append(color)
+            }
+        }
+
+        guard !colors.isEmpty,
+              let dominantBucket = buckets.values.max(by: {
+                  $0.count < $1.count
+              }) else {
+            return BackgroundSample(
+                color: .white,
+                uniformity: 0,
+                isSimple: false,
+                sampleCount: 0
+            )
+        }
+
+        let seedColor = medianColor(dominantBucket)
+        let matchingColors = colors.filter {
+            colorDistance($0, seedColor) <= 30
+        }
+        let support = CGFloat(matchingColors.count) / CGFloat(colors.count)
+        let backgroundColor = matchingColors.isEmpty
+            ? seedColor
+            : medianColor(matchingColors)
+
+        return BackgroundSample(
+            color: backgroundColor,
+            uniformity: support,
+            isSimple: support >= dominantInteriorThreshold,
+            sampleCount: colors.count
+        )
+    }
+
+    private static func quantizedKey(for color: RGBAColor) -> UInt32 {
+        let red = UInt32(color.redByte / 16)
+        let green = UInt32(color.greenByte / 16)
+        let blue = UInt32(color.blueByte / 16)
+        return (red << 8) | (green << 4) | blue
     }
 
     private static func medianColor(_ colors: [RGBAColor]) -> RGBAColor {
