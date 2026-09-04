@@ -25,7 +25,7 @@ struct ImageCanvasView: View {
             )
 
             ZStack {
-                Color(nsColor: .underPageBackgroundColor)
+                UnflattenTheme.workspaceBackground
 
                 if let image = document.displayedImage {
                     Image(decorative: image, scale: 1)
@@ -33,7 +33,11 @@ struct ImageCanvasView: View {
                         .interpolation(.high)
                         .frame(width: displayedRect.width, height: displayedRect.height)
                         .position(x: displayedRect.midX, y: displayedRect.midY)
-                        .shadow(color: .black.opacity(0.22), radius: 7, y: 2)
+                        .overlay {
+                            Rectangle()
+                                .stroke(Color.white.opacity(0.14), lineWidth: 0.5)
+                        }
+                        .shadow(color: .black.opacity(0.24), radius: 18, y: 7)
                 }
 
                 if !document.isOCRRunning {
@@ -43,11 +47,17 @@ struct ImageCanvasView: View {
                 }
 
                 if document.isAddingText {
-                    Text("Click inside the image to place new text")
-                        .font(.callout.weight(.medium))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
+                    Label("Click anywhere on the image to place text", systemImage: "text.badge.plus")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
                         .background(.regularMaterial, in: Capsule())
+                        .overlay {
+                            Capsule()
+                                .stroke(Color.accentColor.opacity(0.35), lineWidth: 1)
+                        }
+                        .shadow(color: .black.opacity(0.12), radius: 8, y: 3)
                         .frame(
                             maxWidth: .infinity,
                             maxHeight: .infinity,
@@ -105,15 +115,15 @@ struct ImageCanvasView: View {
         )
         let isSelected = document.selectedRegionID == region.id
         let isHovered = hoveredRegionID == region.id
-        let color: Color = isSelected ? .accentColor : (isHovered ? .orange : .white)
+        let color: Color = isSelected ? .accentColor : (isHovered ? .accentColor : .white)
 
         Button {
             document.select(region.id)
         } label: {
-            Rectangle()
-                .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.clear)
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .fill(isSelected ? Color.accentColor.opacity(0.14) : Color.clear)
                 .overlay {
-                    Rectangle()
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
                         .stroke(
                             color.opacity(document.isShowingBefore ? 0.45 : 0.9),
                             lineWidth: isSelected ? 2 : (isHovered ? 1.5 : 1)
@@ -130,6 +140,10 @@ struct ImageCanvasView: View {
         }
         .frame(width: max(rect.width, 4), height: max(rect.height, 4))
         .position(x: rect.midX, y: rect.midY)
+        .shadow(
+            color: isSelected ? Color.accentColor.opacity(0.28) : .clear,
+            radius: 4
+        )
         .allowsHitTesting(!document.isAddingText)
         .onHover { hovering in
             hoveredRegionID = hovering ? region.id : (hoveredRegionID == region.id ? nil : hoveredRegionID)
@@ -166,11 +180,12 @@ struct ImageCanvasView: View {
     }
 
     private var zoomControls: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 3) {
             Button {
                 setZoom(zoom / 1.25)
             } label: {
                 Image(systemName: "minus.magnifyingglass")
+                    .frame(width: 24, height: 24)
             }
             .help("Zoom out")
 
@@ -179,7 +194,7 @@ struct ImageCanvasView: View {
             } label: {
                 Text("\(Int((zoom * 100).rounded()))%")
                     .font(.caption.monospacedDigit())
-                    .frame(minWidth: 44)
+                    .frame(width: 46, height: 24)
             }
             .help("Fit image")
 
@@ -187,12 +202,19 @@ struct ImageCanvasView: View {
                 setZoom(zoom * 1.25)
             } label: {
                 Image(systemName: "plus.magnifyingglass")
+                    .frame(width: 24, height: 24)
             }
             .help("Zoom in")
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(.plain)
         .controlSize(.small)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 7))
+        .padding(6)
+        .background(.regularMaterial, in: Capsule())
+        .overlay {
+            Capsule()
+                .stroke(UnflattenTheme.border, lineWidth: 0.5)
+        }
+        .shadow(color: .black.opacity(0.10), radius: 7, y: 3)
     }
 
     private var magnificationGesture: some Gesture {

@@ -19,7 +19,7 @@ struct InspectorView: View {
                 emptyInspector
             }
         }
-        .background(Color(nsColor: .controlBackgroundColor))
+        .background(UnflattenTheme.panelBackground)
         .onChange(of: document.editingRequestToken) {
             if document.editingRegionID == document.selectedRegionID {
                 replacementIsFocused = true
@@ -40,50 +40,104 @@ struct InspectorView: View {
     }
 
     private var emptyInspector: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "selection.pin.in.out")
-                .font(.system(size: 30))
-                .foregroundStyle(.tertiary)
-            Text("Select a text line")
-                .font(.headline)
-            Text("Click an outlined line in the image to edit all of its text and style.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 240)
+        ZStack {
+            UnflattenTheme.panelBackground
+
+            VStack(spacing: 16) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.11))
+                        .frame(width: 58, height: 58)
+                    Image(systemName: "selection.pin.in.out")
+                        .font(.system(size: 25, weight: .medium))
+                        .foregroundStyle(.tint)
+                }
+                VStack(spacing: 6) {
+                    Text("Select a text region")
+                        .font(.headline)
+                    Text("Click an outlined line to edit its content, typography, and background.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 240)
+                }
+                Text("Double-click a region to start typing")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(28)
+            .inspectorCard()
+            .frame(maxWidth: 290)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(24)
+        .padding(20)
     }
 
     private func inspector(for region: TextRegion) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(region.source == .added ? "ADDED TEXT" : "TEXT LINE")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Text(
-                        region.source == .added
-                            ? "New text layer"
-                            : region.originalText
-                    )
-                        .font(.body.weight(.medium))
-                        .textSelection(.enabled)
-                    if region.source == .ocr {
-                        Text("OCR confidence \(Int((region.confidence * 100).rounded()))%")
-                            .font(.caption)
+            LazyVStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color.accentColor.opacity(0.13))
+                            .frame(width: 38, height: 38)
+                        Image(
+                            systemName: region.source == .added
+                                ? "text.badge.plus"
+                                : "character.textbox"
+                        )
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.tint)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(region.source == .added ? "ADDED TEXT" : "DETECTED TEXT")
+                            .font(.caption2.weight(.bold))
                             .foregroundStyle(.secondary)
+                        Text(
+                            region.source == .added
+                                ? "New text layer"
+                                : region.originalText
+                        )
+                            .font(.body.weight(.semibold))
+                            .lineLimit(3)
+                            .textSelection(.enabled)
+                    }
+
+                    Spacer(minLength: 4)
+
+                    if region.source == .ocr {
+                        MetadataPill(
+                            text: "\(Int((region.confidence * 100).rounded()))%",
+                            systemImage: "viewfinder",
+                            tint: region.confidence >= 0.8 ? .green : .orange
+                        )
                     }
                 }
-
-                Divider()
+                .padding(14)
+                .background(
+                    LinearGradient(
+                        colors: [
+                            Color.accentColor.opacity(0.10),
+                            UnflattenTheme.cardBackground
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.accentColor.opacity(0.18), lineWidth: 0.75)
+                }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(region.source == .added ? "Text" : "Line replacement")
-                        .font(.headline)
+                    InspectorSectionLabel(
+                        title: region.source == .added ? "Text" : "Replacement",
+                        systemImage: "pencil"
+                    )
                     TextField(
-                            "Replacement line",
+                        "Replacement line",
                         text: Binding(
                             get: { document.region(id: region.id)?.replacementText ?? "" },
                             set: { document.setReplacementText($0, for: region.id) }
@@ -149,10 +203,10 @@ struct InspectorView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                .inspectorCard()
 
                 VStack(alignment: .leading, spacing: 9) {
-                    Text("Typography")
-                        .font(.headline)
+                    InspectorSectionLabel(title: "Type & Layout", systemImage: "textformat")
 
                     FontFamilyPicker(
                         selection: Binding(
@@ -350,13 +404,14 @@ struct InspectorView: View {
                         )
                     )
                 }
-
-                Divider()
+                .inspectorCard()
 
                 if region.requiresBackgroundCleanup {
                     VStack(alignment: .leading, spacing: 9) {
-                        Text("Background cleanup")
-                            .font(.headline)
+                        InspectorSectionLabel(
+                            title: "Background Cleanup",
+                            systemImage: "wand.and.stars"
+                        )
 
                         HStack {
                             Text(region.backgroundIsSimple ? "Simple background" : "Complex background")
@@ -427,10 +482,10 @@ struct InspectorView: View {
                             }
                         }
                     }
+                    .inspectorCard()
                 } else {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Background")
-                            .font(.headline)
+                        InspectorSectionLabel(title: "Background", systemImage: "square.3.layers.3d")
                         Text(
                             "Added text is composited over the existing image, so no background pixels are erased. Drag its outline on the canvas to move it."
                         )
@@ -438,6 +493,7 @@ struct InspectorView: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     }
+                    .inspectorCard()
                 }
 
                 if let warning = document.warning(for: region.id) {
@@ -448,31 +504,39 @@ struct InspectorView: View {
                     warningLabel("This text line is extremely small.")
                 }
 
-                Divider()
-
-                VStack(spacing: 8) {
+                HStack(spacing: 8) {
                     if region.source == .added {
-                        Button("Delete Text", role: .destructive) {
+                        Button(role: .destructive) {
                             document.deleteRegion(region.id)
+                        } label: {
+                            Label("Delete Text", systemImage: "trash")
                         }
                         .frame(maxWidth: .infinity)
                     } else {
-                        Button("Reset Line") {
+                        Button {
                             document.resetRegion(region.id)
+                        } label: {
+                            Label("Reset Line", systemImage: "arrow.counterclockwise")
                         }
                         .frame(maxWidth: .infinity)
                         .disabled(!region.isEdited)
                     }
 
-                    Button("Reset All Edits") {
+                    Button {
                         confirmsResetAll = true
+                    } label: {
+                        Label("Reset All", systemImage: "arrow.counterclockwise.circle")
                     }
                     .frame(maxWidth: .infinity)
                     .disabled(!document.regions.contains(where: \.isEdited))
                 }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .padding(.top, 2)
             }
-            .padding(16)
+            .padding(14)
         }
+        .scrollIndicators(.hidden)
     }
 
     private func fitResult(for region: TextRegion) -> TextFitResult {
@@ -524,8 +588,12 @@ struct InspectorView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(9)
+        .padding(11)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.09), in: RoundedRectangle(cornerRadius: 7))
+        .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 9))
+        .overlay {
+            RoundedRectangle(cornerRadius: 9)
+                .stroke(Color.orange.opacity(0.18), lineWidth: 0.5)
+        }
     }
 }
