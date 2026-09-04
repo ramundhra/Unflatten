@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 enum EditorialTheme {
@@ -20,6 +21,36 @@ private struct SubtleButtonHoverModifier: ViewModifier {
                 value: isHovered
             )
             .onHover { isHovered = $0 }
+            .overlay {
+                PointingHandCursorRegion()
+                    .allowsHitTesting(false)
+            }
+    }
+}
+
+private struct PointingHandCursorRegion: NSViewRepresentable {
+    func makeNSView(context: Context) -> PointingHandCursorView {
+        PointingHandCursorView()
+    }
+
+    func updateNSView(_ nsView: PointingHandCursorView, context: Context) {
+        nsView.window?.invalidateCursorRects(for: nsView)
+    }
+}
+
+private final class PointingHandCursorView: NSView {
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: .pointingHand)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        window?.invalidateCursorRects(for: self)
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        nil
     }
 }
 
