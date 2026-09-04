@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 enum EditorialTheme {
@@ -20,21 +19,7 @@ private struct SubtleButtonHoverModifier: ViewModifier {
                 reduceMotion ? nil : .easeOut(duration: 0.12),
                 value: isHovered
             )
-            .onHover { hovering in
-                guard hovering != isHovered else { return }
-                isHovered = hovering
-
-                if hovering {
-                    NSCursor.pointingHand.push()
-                } else {
-                    NSCursor.pop()
-                }
-            }
-            .onDisappear {
-                guard isHovered else { return }
-                NSCursor.pop()
-                isHovered = false
-            }
+            .onHover { isHovered = $0 }
     }
 }
 
