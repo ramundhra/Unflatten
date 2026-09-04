@@ -42,14 +42,12 @@ struct WelcomeView: View {
             Spacer()
 
             VStack(alignment: .leading, spacing: 18) {
-                Text("Text,\neditable again.")
+                Text("Edit text in images.")
                     .font(.system(size: 52, weight: .semibold, design: .serif))
                     .tracking(-1.4)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text(
-                    "Replace words in screenshots, diagrams, and photographed documents without rebuilding the image from scratch."
-                )
+                Text("Open an image, select the text you want to change, and edit it.")
                 .font(.title3)
                 .foregroundStyle(.secondary)
                 .lineSpacing(4)
@@ -89,6 +87,7 @@ struct WelcomeView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
+                .subtleButtonHover()
                 .keyboardShortcut("o", modifiers: .command)
 
                 Button {
@@ -99,6 +98,7 @@ struct WelcomeView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
+                .subtleButtonHover()
             }
 
             VStack(spacing: 10) {

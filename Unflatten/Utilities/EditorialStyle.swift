@@ -7,6 +7,28 @@ enum EditorialTheme {
     static let quietRule = Color(nsColor: .separatorColor).opacity(0.34)
 }
 
+private struct SubtleButtonHoverModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isHovered = false
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isHovered && !reduceMotion ? 1.01 : 1)
+            .offset(y: isHovered && !reduceMotion ? -1 : 0)
+            .animation(
+                reduceMotion ? nil : .easeOut(duration: 0.12),
+                value: isHovered
+            )
+            .onHover { isHovered = $0 }
+    }
+}
+
+extension View {
+    func subtleButtonHover() -> some View {
+        modifier(SubtleButtonHoverModifier())
+    }
+}
+
 struct EditorialSectionHeader: View {
     let number: String
     let title: String
