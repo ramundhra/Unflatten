@@ -1,4 +1,5 @@
 import AppKit
+import CoreImage
 import CoreGraphics
 import Foundation
 import Vision
@@ -31,7 +32,12 @@ enum OCRService {
         request.recognitionLanguages = ["en-US"]
         request.minimumTextHeight = 0.005
 
-        let handler = VNImageRequestHandler(cgImage: image, orientation: .up, options: [:])
+        let recognitionImage = enhancedRecognitionImageIfNeeded(image)
+        let handler = VNImageRequestHandler(
+            cgImage: recognitionImage,
+            orientation: .up,
+            options: [:]
+        )
         try handler.perform([request])
 
         let observations = request.results ?? []
@@ -56,28 +62,20 @@ enum OCRService {
                 image: pixelBuffer,
                 around: imageRect
             )
-            let textColor = BackgroundSampler.estimateTextColor(
+            let typography = TypographyEstimator.estimate(
+                text: line.text,
                 image: pixelBuffer,
                 inside: imageRect,
                 background: sample.color
-            )
-            let estimatedWeight = BackgroundSampler.estimateTextWeight(
-                image: pixelBuffer,
-                inside: imageRect,
-                background: sample.color
-            )
-            let fontFamily = NSFont.systemFont(ofSize: 12).familyName ?? "Helvetica"
-            let estimatedFontSize = TextRenderer.estimatedFontSize(
-                for: line.text,
-                family: fontFamily,
-                weight: estimatedWeight,
-                matchingVisibleHeight: imageRect.height * 0.9
             )
             let style = TextStyle.estimated(
-                fontSize: estimatedFontSize,
-                weight: estimatedWeight,
-                textColor: textColor,
-                backgroundColor: sample.color
+                fontSize: typography.fontSize,
+                weight: typography.weight,
+                textColor: typography.textColor,
+                backgroundColor: sample.color,
+                outlineColor: typography.outlineColor,
+                outlineWidth: typography.outlineWidth,
+                letterSpacing: typography.letterSpacing
             )
 
             return TextRegion(
@@ -119,5 +117,36 @@ enum OCRService {
             confidence: candidate.confidence,
             normalizedBoundingBox: observation.boundingBox
         )
+    }
+
+    /// Vision is much more reliable when tiny JPEG lettering is presented at a
+    /// useful working resolution. Normalized OCR coordinates remain unchanged,
+    /// so the result still maps directly onto the untouched source image.
+    private static func enhancedRecognitionImageIfNeeded(_ image: CGImage) -> CGImage {
+        let longestSide = CGFloat(max(image.width, image.height))
+        guard longestSide > 0, longestSide < 900 else { return image }
+
+        let scale = min(4, 900 / longestSide)
+        guard scale > 1.05 else { return image }
+
+        let input = CIImage(cgImage: image)
+        let enlarged = input.applyingFilter(
+            "CILanczosScaleTransform",
+            parameters: [
+                "inputScale": scale,
+                "inputAspectRatio": 1
+            ]
+        )
+        let clarified = enlarged
+            .applyingFilter(
+                "CIColorControls",
+                parameters: ["inputContrast": 1.12]
+            )
+            .applyingFilter(
+                "CISharpenLuminance",
+                parameters: ["inputSharpness": 0.32]
+            )
+        let context = CIContext(options: [.cacheIntermediates: false])
+        return context.createCGImage(clarified, from: clarified.extent.integral) ?? image
     }
 }

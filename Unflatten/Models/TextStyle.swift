@@ -68,6 +68,7 @@ enum TextAlignmentOption: String, Codable, CaseIterable, Identifiable, Sendable 
 }
 
 enum BackgroundCleanupMode: String, Codable, CaseIterable, Identifiable, Sendable {
+    case preserveTexture
     case solidColor
     case photoAware
 
@@ -75,6 +76,8 @@ enum BackgroundCleanupMode: String, Codable, CaseIterable, Identifiable, Sendabl
 
     var title: String {
         switch self {
+        case .preserveTexture:
+            "Preserve"
         case .solidColor:
             "Solid"
         case .photoAware:
@@ -111,6 +114,9 @@ struct TextStyle: Codable, Equatable, Sendable {
     var fontSize: CGFloat
     var weight: TextWeight
     var textColor: RGBAColor
+    var outlineColor: RGBAColor
+    var outlineWidth: CGFloat
+    var letterSpacing: CGFloat
     var backgroundColor: RGBAColor
     var usesManualBackground: Bool
     var backgroundCleanupMode: BackgroundCleanupMode
@@ -125,16 +131,22 @@ struct TextStyle: Codable, Equatable, Sendable {
         fontSize: CGFloat,
         weight: TextWeight = .regular,
         textColor: RGBAColor,
-        backgroundColor: RGBAColor
+        backgroundColor: RGBAColor,
+        outlineColor: RGBAColor = .black,
+        outlineWidth: CGFloat = 0,
+        letterSpacing: CGFloat = 0
     ) -> TextStyle {
         TextStyle(
             fontFamily: NSFont.systemFont(ofSize: max(fontSize, 4)).familyName ?? "Helvetica",
             fontSize: max(fontSize, 4),
             weight: weight,
             textColor: textColor,
+            outlineColor: outlineColor,
+            outlineWidth: max(0, outlineWidth),
+            letterSpacing: letterSpacing,
             backgroundColor: backgroundColor,
             usesManualBackground: false,
-            backgroundCleanupMode: .solidColor,
+            backgroundCleanupMode: .preserveTexture,
             alignment: .center,
             textAreaSizingMode: .automatic,
             customAreaWidthScale: 1,

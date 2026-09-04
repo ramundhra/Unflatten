@@ -332,6 +332,24 @@ final class EditorDocument: ObservableObject {
         }
     }
 
+    func setLetterSpacing(_ spacing: CGFloat, for id: UUID) {
+        updateRegion(id: id, coalescingKey: "letter-spacing-\(id)") {
+            $0.style.letterSpacing = min(max(spacing, -50), 100)
+        }
+    }
+
+    func setOutlineWidth(_ width: CGFloat, for id: UUID) {
+        updateRegion(id: id, coalescingKey: "outline-width-\(id)") {
+            $0.style.outlineWidth = min(max(width, 0), 50)
+        }
+    }
+
+    func setOutlineColor(_ color: RGBAColor, for id: UUID) {
+        updateRegion(id: id, coalescingKey: "outline-color-\(id)") {
+            $0.style.outlineColor = color
+        }
+    }
+
     func setBackgroundColor(_ color: RGBAColor, for id: UUID) {
         updateRegion(id: id, coalescingKey: "background-color-\(id)") {
             $0.style.backgroundColor = color

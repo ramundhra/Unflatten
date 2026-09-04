@@ -275,6 +275,83 @@ struct InspectorView: View {
                         supportsOpacity: true
                     )
 
+                    HStack {
+                        Text("Letter spacing")
+                        Slider(
+                            value: Binding(
+                                get: {
+                                    Double(
+                                        document.region(id: region.id)?.style.letterSpacing
+                                            ?? region.style.letterSpacing
+                                    )
+                                },
+                                set: {
+                                    document.setLetterSpacing(CGFloat($0), for: region.id)
+                                }
+                            ),
+                            in: -10...30,
+                            step: 0.1
+                        )
+                        Text(
+                            Double(
+                                document.region(id: region.id)?.style.letterSpacing
+                                    ?? region.style.letterSpacing
+                            ),
+                            format: .number.precision(.fractionLength(1))
+                        )
+                        .font(.caption.monospacedDigit())
+                        .frame(width: 34, alignment: .trailing)
+                    }
+
+                    HStack {
+                        Text("Outline")
+                        Slider(
+                            value: Binding(
+                                get: {
+                                    Double(
+                                        document.region(id: region.id)?.style.outlineWidth
+                                            ?? region.style.outlineWidth
+                                    )
+                                },
+                                set: {
+                                    document.setOutlineWidth(CGFloat($0), for: region.id)
+                                }
+                            ),
+                            in: 0...20,
+                            step: 0.25
+                        )
+                        Text(
+                            Double(
+                                document.region(id: region.id)?.style.outlineWidth
+                                    ?? region.style.outlineWidth
+                            ),
+                            format: .number.precision(.fractionLength(1))
+                        )
+                        .font(.caption.monospacedDigit())
+                        .frame(width: 34, alignment: .trailing)
+                    }
+
+                    if (document.region(id: region.id)?.style.outlineWidth
+                        ?? region.style.outlineWidth) > 0.05 {
+                        ColorPicker(
+                            "Outline color",
+                            selection: Binding(
+                                get: {
+                                    (document.region(id: region.id)?.style.outlineColor
+                                        ?? region.style.outlineColor)
+                                        .swiftUIColor
+                                },
+                                set: {
+                                    document.setOutlineColor(
+                                        RGBAColor(nsColor: NSColor($0)),
+                                        for: region.id
+                                    )
+                                }
+                            ),
+                            supportsOpacity: true
+                        )
+                    }
+
                     Picker(
                         "Text area",
                         selection: Binding(
@@ -406,8 +483,18 @@ struct InspectorView: View {
                         }
                         .pickerStyle(.segmented)
 
-                        if (document.region(id: region.id)?.style.backgroundCleanupMode
-                            ?? region.style.backgroundCleanupMode) == .photoAware {
+                        let cleanupMode = document.region(id: region.id)?
+                            .style.backgroundCleanupMode
+                            ?? region.style.backgroundCleanupMode
+
+                        if cleanupMode == .preserveTexture {
+                            Text(
+                                "Removes only the original letter pixels and rebuilds them from nearby background texture. Best for compressed images, paper, and flat artwork."
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        } else if cleanupMode == .photoAware {
                             Text(
                                 "Reconstructs the old text area from nearby pixels. This runs locally and works best on paper, gradients, and light textures."
                             )
@@ -444,7 +531,9 @@ struct InspectorView: View {
                                 )
                             )
 
-                            if !region.backgroundIsSimple && !region.style.usesManualBackground {
+                            if !region.backgroundIsSimple
+                                && !(document.region(id: region.id)?.style.usesManualBackground
+                                    ?? region.style.usesManualBackground) {
                                 warningLabel(
                                     "The surrounding pixels are not uniform. Use Photo-aware cleanup, or choose a background color and enable the custom background."
                                 )

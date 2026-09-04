@@ -5,6 +5,7 @@ import Foundation
 
 enum RegionRenderWarning: Equatable, Sendable {
     case complexBackground
+    case foregroundIsolationFailed
     case backgroundReconstructionFailed
     case textDoesNotFit
     case invalidFont
@@ -14,6 +15,8 @@ enum RegionRenderWarning: Equatable, Sendable {
         switch self {
         case .complexBackground:
             "Automatic cleanup is paused because the surrounding background is not uniform. Enable a custom background color to render this edit."
+        case .foregroundIsolationFailed:
+            "Texture-preserving cleanup could not safely separate the old lettering from its background. Try Photo-aware cleanup or a custom solid color."
         case .backgroundReconstructionFailed:
             "Photo-aware cleanup needs visible image content on at least two sides of this text line."
         case .textDoesNotFit:
@@ -59,8 +62,9 @@ enum TextRenderer {
                 imageSize: output.size
             )
             let cleanupRect: CGRect
-            if region.style.backgroundCleanupMode == .solidColor {
-                let sourceBackground = region.style.usesManualBackground
+            if region.style.backgroundCleanupMode != .photoAware {
+                let sourceBackground = region.style.backgroundCleanupMode == .solidColor
+                    && region.style.usesManualBackground
                     ? region.style.backgroundColor
                     : region.detectedStyle.backgroundColor
                 cleanupRect = BackgroundSampler.constrainedCleanupRect(
@@ -83,6 +87,17 @@ enum TextRenderer {
             }
 
             switch region.style.backgroundCleanupMode {
+            case .preserveTexture:
+                if BackgroundReconstructor.removeForeground(
+                    source: source,
+                    output: &output,
+                    inside: cleanupRect,
+                    background: region.detectedStyle.backgroundColor
+                ) {
+                    renderableRegionIDs.insert(region.id)
+                } else {
+                    warnings[region.id] = .foregroundIsolationFailed
+                }
             case .solidColor:
                 output.fill(rect: cleanupRect, color: region.style.backgroundColor)
                 renderableRegionIDs.insert(region.id)
@@ -263,6 +278,8 @@ enum TextRenderer {
             family: style.fontFamily,
             weight: style.weight,
             fontSize: requestedSize,
+            letterSpacing: style.letterSpacing,
+            outlineWidth: style.outlineWidth,
             mathFormattingEnabled: style.mathFormattingEnabled
         )
 
@@ -279,6 +296,8 @@ enum TextRenderer {
             family: style.fontFamily,
             weight: style.weight,
             fontSize: minimumFontSize,
+            letterSpacing: style.letterSpacing,
+            outlineWidth: style.outlineWidth,
             mathFormattingEnabled: style.mathFormattingEnabled
         )
         guard measurement(minimumMeasurement, fitsIn: size) else {
@@ -295,6 +314,8 @@ enum TextRenderer {
                 family: style.fontFamily,
                 weight: style.weight,
                 fontSize: candidate,
+                letterSpacing: style.letterSpacing,
+                outlineWidth: style.outlineWidth,
                 mathFormattingEnabled: style.mathFormattingEnabled
             )
             if measurement(candidateMeasurement, fitsIn: size) {
@@ -344,6 +365,8 @@ enum TextRenderer {
             family: style.fontFamily,
             weight: style.weight,
             fontSize: max(minimumFontSize, style.fontSize),
+            letterSpacing: style.letterSpacing,
+            outlineWidth: style.outlineWidth,
             mathFormattingEnabled: style.mathFormattingEnabled
         )
         return CGSize(
@@ -389,6 +412,9 @@ enum TextRenderer {
                 weight: style.weight,
                 fontSize: fit.fontSize,
                 textColor: style.textColor,
+                outlineColor: style.outlineColor,
+                outlineWidth: style.outlineWidth,
+                letterSpacing: style.letterSpacing,
                 mathFormattingEnabled: style.mathFormattingEnabled
             )
         }
@@ -402,7 +428,10 @@ enum TextRenderer {
                 size: fit.fontSize
             ).font
 
-        let glyphBounds = coreTextLines.map { visibleBounds(for: $0, font: font) }
+        let glyphBounds = coreTextLines.map {
+            visibleBounds(for: $0, font: font)
+                .insetBy(dx: -style.outlineWidth, dy: -style.outlineWidth)
+        }
         let lineHeight = max(
             typographicLineHeight(font: font, fontSize: fit.fontSize),
             (glyphBounds.map(\.height).max() ?? 0) + fit.fontSize * 0.08
@@ -447,6 +476,8 @@ enum TextRenderer {
         family: String,
         weight: TextWeight,
         fontSize: CGFloat,
+        letterSpacing: CGFloat = 0,
+        outlineWidth: CGFloat = 0,
         mathFormattingEnabled: Bool = false
     ) -> TextMeasurement {
         let lines = text.components(separatedBy: .newlines)
@@ -457,6 +488,9 @@ enum TextRenderer {
                 weight: weight,
                 fontSize: fontSize,
                 textColor: nil,
+                outlineColor: .black,
+                outlineWidth: outlineWidth,
+                letterSpacing: letterSpacing,
                 mathFormattingEnabled: mathFormattingEnabled
             )
         }
@@ -465,7 +499,10 @@ enum TextRenderer {
         }
         let font = attributedLines.first?.baseFont
             ?? makeFont(family: family, weight: weight, size: fontSize).font
-        let glyphBounds = coreTextLines.map { visibleBounds(for: $0, font: font) }
+        let glyphBounds = coreTextLines.map {
+            visibleBounds(for: $0, font: font)
+                .insetBy(dx: -outlineWidth, dy: -outlineWidth)
+        }
         let lineHeight = max(
             typographicLineHeight(font: font, fontSize: fontSize),
             (glyphBounds.map(\.height).max() ?? 0) + fontSize * 0.08
@@ -485,6 +522,9 @@ enum TextRenderer {
         weight: TextWeight,
         fontSize: CGFloat,
         textColor: RGBAColor?,
+        outlineColor: RGBAColor,
+        outlineWidth: CGFloat,
+        letterSpacing: CGFloat,
         mathFormattingEnabled: Bool
     ) -> AttributedLine {
         let baseFontResult = makeFont(
@@ -534,6 +574,11 @@ enum TextRenderer {
             var attributes: [NSAttributedString.Key: Any] = [
                 NSAttributedString.Key(kCTFontAttributeName as String): segmentFontResult.font
             ]
+            if letterSpacing != 0 {
+                attributes[
+                    NSAttributedString.Key(kCTKernAttributeName as String)
+                ] = letterSpacing
+            }
             if baselineOffset != 0 {
                 attributes[
                     NSAttributedString.Key(kCTBaselineOffsetAttributeName as String)
@@ -543,6 +588,15 @@ enum TextRenderer {
                 attributes[
                     NSAttributedString.Key(kCTForegroundColorAttributeName as String)
                 ] = textColor.nsColor.cgColor
+
+                if outlineWidth > 0 {
+                    attributes[
+                        NSAttributedString.Key(kCTStrokeColorAttributeName as String)
+                    ] = outlineColor.nsColor.cgColor
+                    attributes[
+                        NSAttributedString.Key(kCTStrokeWidthAttributeName as String)
+                    ] = -(outlineWidth / max(1, fontSize * scale)) * 100
+                }
             }
 
             attributedString.append(

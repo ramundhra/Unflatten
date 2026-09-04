@@ -36,9 +36,14 @@ struct TextRegion: Identifiable, Equatable, Sendable {
     }
 
     var effectiveBackgroundIsUsable: Bool {
-        style.backgroundCleanupMode == .photoAware
-            || backgroundIsSimple
-            || style.usesManualBackground
+        switch style.backgroundCleanupMode {
+        case .preserveTexture:
+            backgroundIsSimple
+        case .solidColor:
+            backgroundIsSimple || style.usesManualBackground
+        case .photoAware:
+            true
+        }
     }
 
     mutating func reset() {
