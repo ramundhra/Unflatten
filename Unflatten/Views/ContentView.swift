@@ -11,8 +11,7 @@ struct ContentView: View {
                 WelcomeView(document: document)
             }
         }
-        .frame(minWidth: 940, minHeight: 640)
-        .tint(.accentColor)
+        .frame(minWidth: 860, minHeight: 600)
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
                 Button {
@@ -35,7 +34,7 @@ struct ContentView: View {
                     Button {
                         document.runOCR()
                     } label: {
-                        Label("Scan Text", systemImage: "viewfinder")
+                        Label("Run OCR Again", systemImage: "text.viewfinder")
                     }
                     .disabled(document.isOCRRunning)
 
@@ -44,7 +43,7 @@ struct ContentView: View {
                     } label: {
                         Label(
                             document.isAddingText ? "Cancel Add Text" : "Add Text",
-                            systemImage: document.isAddingText ? "xmark" : "text.badge.plus"
+                            systemImage: document.isAddingText ? "xmark" : "plus.square"
                         )
                     }
                     .help(
@@ -73,12 +72,12 @@ struct ContentView: View {
 
                 ToolbarItem(placement: .principal) {
                     Picker("Preview", selection: $document.isShowingBefore) {
-                        Text("Edited").tag(false)
-                        Text("Original").tag(true)
+                        Text("After").tag(false)
+                        Text("Before").tag(true)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
-                    .frame(width: 172)
+                    .frame(width: 150)
                     .help("Switch between the original and edited image")
                 }
 
@@ -95,7 +94,6 @@ struct ContentView: View {
                     } label: {
                         Label("Export PNG", systemImage: "square.and.arrow.up")
                     }
-                    .buttonStyle(.borderedProminent)
                     .disabled(document.isExporting)
                 }
             }

@@ -8,7 +8,7 @@ struct UnflattenApp: App {
         WindowGroup {
             ContentView(document: document)
         }
-        .defaultSize(width: 1_180, height: 800)
+        .defaultSize(width: 1_100, height: 750)
         .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(replacing: .newItem) {

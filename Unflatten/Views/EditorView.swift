@@ -10,10 +10,10 @@ struct EditorView: View {
                     ImageCanvasView(document: document)
                     statusBar
                 }
-                .frame(minWidth: 580)
+                .frame(minWidth: 520)
 
                 InspectorView(document: document)
-                    .frame(minWidth: 310, idealWidth: 348, maxWidth: 410)
+                    .frame(minWidth: 280, idealWidth: 320, maxWidth: 380)
             }
 
             if let errorMessage = document.errorMessage {
@@ -39,14 +39,10 @@ struct EditorView: View {
     }
 
     private var statusBar: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 9) {
             if document.isOCRRunning || document.isExporting {
                 ProgressView()
                     .controlSize(.small)
-            } else {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.caption)
-                    .foregroundStyle(.green)
             }
 
             Text(document.statusMessage)
@@ -57,19 +53,14 @@ struct EditorView: View {
             Spacer()
 
             if document.hasImage {
-                MetadataPill(
-                    text: "\(document.regions.count) text regions",
-                    systemImage: "character.textbox"
-                )
-                MetadataPill(
-                    text: "\(Int(document.pixelSize.width)) × \(Int(document.pixelSize.height)) px",
-                    systemImage: "photo"
-                )
+                Text("\(Int(document.pixelSize.width)) × \(Int(document.pixelSize.height)) px")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.tertiary)
             }
         }
-        .padding(.horizontal, 14)
-        .frame(height: 36)
-        .background(.ultraThinMaterial)
+        .padding(.horizontal, 12)
+        .frame(height: 30)
+        .background(.bar)
         .overlay(alignment: .top) {
             Divider()
         }
