@@ -38,7 +38,10 @@ struct TextRegion: Identifiable, Equatable, Sendable {
     var effectiveBackgroundIsUsable: Bool {
         switch style.backgroundCleanupMode {
         case .preserveTexture:
-            backgroundIsSimple
+            // Preserve mode performs its own foreground-isolation safety check.
+            // Do not block it just because borders or artwork make the outer
+            // sampling ring look nonuniform.
+            true
         case .solidColor:
             backgroundIsSimple || style.usesManualBackground
         case .photoAware:

@@ -106,7 +106,18 @@ enum BackgroundSampler {
         guard !surrounding.isSimple else { return surrounding }
 
         let interior = dominantInteriorSample(image: image, inside: textRect)
-        return interior.isSimple ? interior : surrounding
+        if interior.isSimple {
+            return interior
+        }
+
+        // Logos and labels often place text on a flat inner band surrounded by
+        // outlines or artwork. Even when neither sample meets the conservative
+        // "simple" threshold, retain whichever one has the stronger dominant
+        // color so texture-preserving cleanup receives the actual text-band
+        // color instead of the artwork outside it.
+        return interior.uniformity >= surrounding.uniformity
+            ? interior
+            : surrounding
     }
 
     static func sample(
