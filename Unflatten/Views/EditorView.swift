@@ -10,10 +10,10 @@ struct EditorView: View {
                     ImageCanvasView(document: document)
                     statusBar
                 }
-                .frame(minWidth: 520)
+                .frame(minWidth: 560)
 
                 InspectorView(document: document)
-                    .frame(minWidth: 280, idealWidth: 320, maxWidth: 380)
+                    .frame(minWidth: 300, idealWidth: 336, maxWidth: 390)
             }
 
             if let errorMessage = document.errorMessage {
@@ -53,13 +53,18 @@ struct EditorView: View {
             Spacer()
 
             if document.hasImage {
-                Text("\(Int(document.pixelSize.width)) × \(Int(document.pixelSize.height)) px")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.tertiary)
+                EditorMetadata(
+                    text: "\(document.regions.count) regions",
+                    systemImage: "character.textbox"
+                )
+                EditorMetadata(
+                    text: "\(Int(document.pixelSize.width)) × \(Int(document.pixelSize.height)) px",
+                    systemImage: "photo"
+                )
             }
         }
         .padding(.horizontal, 12)
-        .frame(height: 30)
+        .frame(height: 34)
         .background(.bar)
         .overlay(alignment: .top) {
             Divider()

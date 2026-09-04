@@ -27,13 +27,19 @@ struct ImageCanvasView: View {
             ZStack {
                 Color(nsColor: .underPageBackgroundColor)
 
+                WorkspaceGrid()
+
                 if let image = document.displayedImage {
                     Image(decorative: image, scale: 1)
                         .resizable()
                         .interpolation(.high)
                         .frame(width: displayedRect.width, height: displayedRect.height)
                         .position(x: displayedRect.midX, y: displayedRect.midY)
-                        .shadow(color: .black.opacity(0.22), radius: 7, y: 2)
+                        .overlay {
+                            Rectangle()
+                                .stroke(EditorialTheme.rule, lineWidth: 0.5)
+                        }
+                        .shadow(color: .black.opacity(0.20), radius: 10, y: 4)
                 }
 
                 if !document.isOCRRunning {
@@ -43,11 +49,18 @@ struct ImageCanvasView: View {
                 }
 
                 if document.isAddingText {
-                    Text("Click inside the image to place new text")
+                    Label("Click the image to place text", systemImage: "text.badge.plus")
                         .font(.callout.weight(.medium))
                         .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(.regularMaterial, in: Capsule())
+                        .padding(.vertical, 8)
+                        .background(
+                            EditorialTheme.panel,
+                            in: RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                .stroke(EditorialTheme.rule, lineWidth: 0.5)
+                        }
                         .frame(
                             maxWidth: .infinity,
                             maxHeight: .infinity,
@@ -105,13 +118,13 @@ struct ImageCanvasView: View {
         )
         let isSelected = document.selectedRegionID == region.id
         let isHovered = hoveredRegionID == region.id
-        let color: Color = isSelected ? .accentColor : (isHovered ? .orange : .white)
+        let color: Color = isSelected ? .accentColor : (isHovered ? .accentColor : .white)
 
         Button {
             document.select(region.id)
         } label: {
             Rectangle()
-                .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.clear)
+                .fill(isSelected ? Color.accentColor.opacity(0.10) : Color.clear)
                 .overlay {
                     Rectangle()
                         .stroke(
@@ -166,7 +179,7 @@ struct ImageCanvasView: View {
     }
 
     private var zoomControls: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 1) {
             Button {
                 setZoom(zoom / 1.25)
             } label: {
@@ -192,7 +205,15 @@ struct ImageCanvasView: View {
         }
         .buttonStyle(.bordered)
         .controlSize(.small)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 7))
+        .padding(4)
+        .background(
+            EditorialTheme.panel,
+            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(EditorialTheme.rule, lineWidth: 0.5)
+        }
     }
 
     private var magnificationGesture: some Gesture {

@@ -19,7 +19,7 @@ struct InspectorView: View {
                 emptyInspector
             }
         }
-        .background(Color(nsColor: .controlBackgroundColor))
+        .background(EditorialTheme.panel)
         .onChange(of: document.editingRequestToken) {
             if document.editingRegionID == document.selectedRegionID {
                 replacementIsFocused = true
@@ -40,50 +40,76 @@ struct InspectorView: View {
     }
 
     private var emptyInspector: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "selection.pin.in.out")
-                .font(.system(size: 30))
-                .foregroundStyle(.tertiary)
-            Text("Select a text line")
-                .font(.headline)
-            Text("Click an outlined line in the image to edit all of its text and style.")
-                .font(.callout)
+        VStack(alignment: .leading, spacing: 18) {
+            Text("INSPECTOR")
+                .font(.caption2.weight(.bold))
+                .tracking(1.5)
                 .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 240)
+
+            Spacer()
+
+            VStack(alignment: .leading, spacing: 12) {
+                Image(systemName: "selection.pin.in.out")
+                    .font(.system(size: 28, weight: .light))
+                    .foregroundStyle(.tint)
+                Text("Nothing selected")
+                    .font(.title3.weight(.semibold))
+                Text("Choose an outlined text region on the canvas to edit its content and appearance.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineSpacing(3)
+                    .frame(maxWidth: 245, alignment: .leading)
+            }
+
+            Spacer()
+
+            Text("TIP  ·  DOUBLE-CLICK TO TYPE")
+                .font(.caption2.monospaced())
+                .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(24)
+        .padding(22)
     }
 
     private func inspector(for region: TextRegion) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(region.source == .added ? "ADDED TEXT" : "TEXT LINE")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text(region.source == .added ? "ADDED LAYER" : "SELECTION")
+                            .font(.caption2.weight(.bold))
+                            .tracking(1.4)
+                            .foregroundStyle(.secondary)
+
+                        Spacer()
+
+                        if region.source == .ocr {
+                            EditorMetadata(
+                                text: "\(Int((region.confidence * 100).rounded()))% OCR",
+                                systemImage: "viewfinder"
+                            )
+                        }
+                    }
+
                     Text(
                         region.source == .added
                             ? "New text layer"
                             : region.originalText
                     )
-                        .font(.body.weight(.medium))
+                        .font(.title3.weight(.semibold))
+                        .lineLimit(3)
                         .textSelection(.enabled)
-                    if region.source == .ocr {
-                        Text("OCR confidence \(Int((region.confidence * 100).rounded()))%")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
                 }
 
                 Divider()
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(region.source == .added ? "Text" : "Line replacement")
-                        .font(.headline)
+                    EditorialSectionHeader(
+                        number: "01",
+                        title: region.source == .added ? "Text" : "Replacement"
+                    )
                     TextField(
-                            "Replacement line",
+                        "Replacement line",
                         text: Binding(
                             get: { document.region(id: region.id)?.replacementText ?? "" },
                             set: { document.setReplacementText($0, for: region.id) }
@@ -151,8 +177,7 @@ struct InspectorView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 9) {
-                    Text("Typography")
-                        .font(.headline)
+                    EditorialSectionHeader(number: "02", title: "Type & Layout")
 
                     FontFamilyPicker(
                         selection: Binding(
@@ -355,8 +380,7 @@ struct InspectorView: View {
 
                 if region.requiresBackgroundCleanup {
                     VStack(alignment: .leading, spacing: 9) {
-                        Text("Background cleanup")
-                            .font(.headline)
+                        EditorialSectionHeader(number: "03", title: "Background")
 
                         HStack {
                             Text(region.backgroundIsSimple ? "Simple background" : "Complex background")
@@ -429,8 +453,7 @@ struct InspectorView: View {
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Background")
-                            .font(.headline)
+                        EditorialSectionHeader(number: "03", title: "Background")
                         Text(
                             "Added text is composited over the existing image, so no background pixels are erased. Drag its outline on the canvas to move it."
                         )
@@ -452,26 +475,33 @@ struct InspectorView: View {
 
                 VStack(spacing: 8) {
                     if region.source == .added {
-                        Button("Delete Text", role: .destructive) {
+                        Button(role: .destructive) {
                             document.deleteRegion(region.id)
+                        } label: {
+                            Label("Delete Text", systemImage: "trash")
                         }
                         .frame(maxWidth: .infinity)
                     } else {
-                        Button("Reset Line") {
+                        Button {
                             document.resetRegion(region.id)
+                        } label: {
+                            Label("Reset Line", systemImage: "arrow.counterclockwise")
                         }
                         .frame(maxWidth: .infinity)
                         .disabled(!region.isEdited)
                     }
 
-                    Button("Reset All Edits") {
+                    Button {
                         confirmsResetAll = true
+                    } label: {
+                        Text("Reset All Edits")
                     }
                     .frame(maxWidth: .infinity)
                     .disabled(!document.regions.contains(where: \.isEdited))
                 }
+                .buttonStyle(.bordered)
             }
-            .padding(16)
+            .padding(18)
         }
     }
 
@@ -526,6 +556,10 @@ struct InspectorView: View {
         }
         .padding(9)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.09), in: RoundedRectangle(cornerRadius: 7))
+        .background(EditorialTheme.raised, in: RoundedRectangle(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(Color.orange.opacity(0.35), lineWidth: 0.5)
+        }
     }
 }

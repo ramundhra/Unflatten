@@ -11,7 +11,8 @@ struct ContentView: View {
                 WelcomeView(document: document)
             }
         }
-        .frame(minWidth: 860, minHeight: 600)
+        .frame(minWidth: 920, minHeight: 620)
+        .tint(.accentColor)
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
                 Button {
@@ -72,12 +73,12 @@ struct ContentView: View {
 
                 ToolbarItem(placement: .principal) {
                     Picker("Preview", selection: $document.isShowingBefore) {
-                        Text("After").tag(false)
-                        Text("Before").tag(true)
+                        Text("Result").tag(false)
+                        Text("Source").tag(true)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
-                    .frame(width: 150)
+                    .frame(width: 156)
                     .help("Switch between the original and edited image")
                 }
 
